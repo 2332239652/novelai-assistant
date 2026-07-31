@@ -26,7 +26,7 @@
 将本仓库克隆到你的 Agent Skill 目录（如 OpenCode / Claude Code 的 skills 目录）：
 
 ```bash
-git clone https://github.com/SGSxingchen/novelai-assistant.git
+git clone https://github.com/2332239652/novelai-assistant.git
 ```
 
 或直接复制 `SKILL.md` 及配套资源文件到你的技能目录。
@@ -48,7 +48,7 @@ git clone https://github.com/SGSxingchen/novelai-assistant.git
 
 ## 🤖 与 MCP Server 搭配使用
 
-本 Skill 负责「提示词工程」层，配合 [NovelAI MCP Server](https://github.com/SGSxingchen/NovelAI_MCP)（API 桥接层）可构成完整方案：
+本 Skill 负责「提示词工程」层，配合 [NovelAI MCP Server](https://github.com/2332239652/NovelAI_MCP)（API 桥接层）可构成完整方案：
 
 ```
 用户描述 → [本 Skill] → Danbooru 提示词 → [NovelAI MCP] → NovelAI API → 图片
