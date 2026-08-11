@@ -58,6 +58,11 @@ git clone https://github.com/2332239652/novelai-assistant.git
 用户描述 → [本 Skill] → Danbooru 提示词 → [NovelAI MCP] → NovelAI API → 图片
 ```
 
+## 👤 作者
+
+- **歌靡Abyss** - 项目创建者与维护者（本 Skill 由作者创建，并借助 AI 辅助制作）
+- 社区画师与配方贡献者（见下方致谢）
+
 ## 📄 许可证
 
 [MIT](./LICENSE)
