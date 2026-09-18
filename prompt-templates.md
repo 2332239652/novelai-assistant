@@ -22,6 +22,56 @@
 
 ---
 
+### V5 推荐模板
+
+V5 官方明确支持更强的自然语言、多人角色、透明度和文字渲染。实用默认写法是：base 描述场景/布局/光线/氛围，角色框分别描述角色；用角色名、关键外观、视角和特殊能力标签做少量锚定。画师串和权重属于经验调参，先保留简单基线。
+
+```
+[optional artist tags], 1girl, solo, high complexity,
+A girl with long silver hair stands beneath cherry blossoms in a quiet park;
+soft morning light filters through the branches, with a cinematic medium shot.
+```
+
+**V5 多角色 + 角色框：**
+```
+base: 2girls, indoors, a warm classroom after sunset; the first girl stands on the left,
+the second girl sits on the right, both facing each other in a calm conversation.
+character 1: girl, blue hair, school uniform, left side, attentive expression
+character 2: girl, red hair, casual clothes, right side, seated, gentle smile
+```
+
+官方建议人数标签放 base，角色框只写 `girl`/`boy`/`other`，不要在角色框重复数字。位置可用界面自定义定位；当前 MCP 的 `center_x/center_y` 和 `aic` 是实现映射，不能当作所有客户端都相同的语法。
+
+**V5 多角色大合照（学校合照式）：**
+```
+14girls, school group photo, class photo; the students stand in three neat rows,
+with the back row elevated on steps, the middle row standing, and the front row seated,
+natural smiles, looking at the viewer.
+```
+
+**V5 文字渲染：**
+```
+1girl, solo, holding a sign, text, english text, bright outdoor light.
+Text: HELLO WORLD
+```
+
+**V5 中文文字：**
+```
+1girl, solo, holding a sign, text, chinese text, classroom, daytime.
+Text: 你好世界
+```
+
+官方长度上限：V5 Full 的 Text ≤750 字符，V5 Curated ≤374 字符，包含空格和换行；`Text:` 必须位于整个 base prompt 最末。
+
+**V5 透明背景：**
+```
+1girl, solo, transparent background, has alpha
+```
+
+V5 官方确认支持 alpha transparency；当前 API/客户端若有透明开关，输出应选 PNG 以保留 alpha。`fake transparency` 是绘制假棋盘格效果的经验标签，不等于真正透明。
+
+---
+
 ## 场景模板
 
 ### 1. 角色立绘/设定图
@@ -350,4 +400,126 @@ photo (medium), photographic doll, fumo (doll), 1girl, solo, [角色描述]
 
 ```
 photo (medium), figure, 1girl, solo, [角色描述], display case, gradient background
+```
+
+---
+
+## OC 角色：小银（银霜）
+
+> 锚点标签完整定义见 `SKILL.md` > OC 角色库 > 小银。以下为各场景快捷模板。
+
+### SFW 标准立绘
+
+```
+[artist:ask (askzy)], artist:wanke, artist:ciloranko, [[artist:rhasta]], {chiaroscuro}, wlop, [artist:ke-ta], masterpiece, best quality, very aesthetic, absurdres, white background, simple background
+
+1girl, solo, young, teenage, petite, silver hair, medium hair, blunt bangs, hair between eyes, amber eyes, {heart-shaped pupils}, mole under eye, {{ahoge}}, pale skin, delicate features, narrow waist, small breasts, {half-closed eyes}, expressionless, sleepy, languid, messy hair, one strand out of place, oversize hoodie, light gray hoodie, hood down, loose fit, sleeves covering hands, black shorts, black thighhighs, slippers, standing, full body, arms at sides, slightly slouched, facing viewer
+```
+
+### SFW 动作场景（替换后半段即可）
+
+```
+[画师串], [画质标签], [场景], [光照]
+
+[锚点不变]: silver hair, medium hair, blunt bangs, amber eyes, {heart-shaped pupils}, mole under eye, {{ahoge}}, pale skin, narrow waist, small breasts, {half-closed eyes}, expressionless
+[服设不变]: oversize hoodie, light gray hoodie, black shorts, black thighhighs, slippers, messy hair
+[动作]: [自由替换]
+```
+
+### R18 触手
+
+```
+[artist:ask (askzy)], artist:wanke, artist:ciloranko, [[artist:rhasta]], {chiaroscuro}, wlop, [artist:ke-ta], masterpiece, best quality, highres, rating:explicit, dark dungeon, stone floor, dim lighting, dramatic shadows
+
+1girl, solo, silver hair, medium hair, blunt bangs, amber eyes, {heart-shaped pupils}, mole under eye, {{ahoge}}, pale skin, narrow waist, small breasts, {half-closed eyes}, expressionless, nude, all fours, from behind, looking back, tentacles, many tentacles, tentacle around legs, tentacle around arms, tentacle around waist, tentacle in pussy, creampie, absent look, dazed, drooling, sweaty, trembling, messy hair, cum drip
+```
+
+### R18 泳装
+
+```
+year 2025, masterpiece, best quality, amazing quality, very aesthetic, highres, absurdres, rating:explicit, poolside, blue sky, sunlight, summer, soft lighting, cowboy shot
+
+1girl, solo, silver hair, medium hair, blunt bangs, amber eyes, {heart-shaped pupils}, mole under eye, {{ahoge}}, pale skin, narrow waist, small breasts, {half-closed eyes}, expressionless, school swimsuit, swimsuit aside, pulling swimsuit aside, exposed pussy, spread legs, sitting, legs apart, looking at viewer, embarrassed, heavy blush, shy, sweating, petite
+```
+
+### R18 颜射
+
+```
+year 2025, masterpiece, best quality, amazing quality, very aesthetic, highres, absurdres, rating:explicit, bedroom, dim lighting, soft lighting
+
+1girl, solo, silver hair, medium hair, blunt bangs, amber eyes, {heart-shaped pupils}, mole under eye, {{ahoge}}, pale skin, narrow waist, small breasts, {half-closed eyes}, expressionless, nude, bare shoulders, bukkake, excessive cum, cum on face, cum on hair, cum on body, cum on breasts, cum drip, thick cum, portrait, upper body, kneeling, messy hair, disheveled, looking at viewer, exhausted, spent, embarrassed, heavy blush, sweaty
+```
+
+### R18 后入
+
+```
+[artist:ask (askzy)], artist:wanke, artist:ciloranko, [[artist:rhasta]], {chiaroscuro}, wlop, [artist:ke-ta], masterpiece, best quality, highres, rating:explicit, bedroom, bed, silk sheets, moonlight, dim lighting, night, pov, from behind
+
+1girl, silver hair, medium hair, blunt bangs, amber eyes, {heart-shaped pupils}, mole under eye, {{ahoge}}, pale skin, narrow waist, small breasts, {half-closed eyes}, expressionless, clothes on, partially clothed, oversize hoodie, hoodie lifted, no panties, panties pulled down, exposed pussy, doggystyle, on all fours, back arched, hips raised, belly bulge, pained expression, mind broken, dazed, open mouth, drooling, tears, messy hair, sweaty, trembling, hands gripping sheets, hickeys on neck, bruised hips, creampie, cum leaking, cum on thighs, cum on ass | 1boy, faceless, faceless male, no face, head out of frame, muscular, kneeling behind, large penis, vaginal, penetration, deep, grabbing hips, thrusting, rough sex, intense
+```
+
+---
+
+## OC 角色：紫姬
+
+### SFW 立绘
+```
+[artist:ask (askzy)], artist:wanke, artist:ciloranko, [[artist:rhasta]], {chiaroscuro}, wlop, [artist:tidsean], [artist:ke-ta], masterpiece, best quality, very aesthetic, absurdres, white background, simple background, 1girl, solo, silver hair, long hair, hime cut, blunt bangs, sidelocks, hair between eyes, purple eyes, downturned eyes, long eyelashes, pale skin, delicate features, petite, slim, narrow waist, small breasts, {short kimono}, white kimono, long sleeves, purple obi, {kimono skirt}, above knee, thighhighs, geta, camellia hair ornament, bare legs, standing, full body, facing viewer, shy, blush, looking away
+```
+
+### 泳装
+```
+artist:tianliang_duohe_fangdongye, artist:wlop, artist:ask_(askzy), artist:ciloranko, artist:sho_(sho_lwlw), artist:ningen_mame, masterpiece, best quality, very aesthetic, poolside, blue sky, sunlight, summer, soft lighting, rating:sensitive, 1girl, solo, silver hair, long hair, hime cut, blunt bangs, sidelocks, hair between eyes, purple eyes, downturned eyes, long eyelashes, pale skin, delicate features, petite, slim, narrow waist, small breasts, school swimsuit, standing, full body, collarbone, navel, bare shoulders, bare legs, looking at viewer, shy, blush, embarrassed
+```
+
+### R18 剥下胸口
+```
+[artist:ask (askzy)], artist:wanke, artist:ciloranko, [[artist:rhasta]], {chiaroscuro}, wlop, [artist:tidsean], [artist:ke-ta], masterpiece, best quality, highres, rating:explicit, bedroom, soft lighting, moonlight, mood lighting, 1girl, solo, silver hair, long hair, hime cut, blunt bangs, sidelocks, hair between eyes, purple eyes, downturned eyes, long eyelashes, pale skin, delicate features, petite, slim, narrow waist, small breasts, barefoot, bare shoulders, collarbone, white kimono, purple obi, camellia hair ornament, {kimono pulled down}, dress pull, exposed breasts, nipples, sitting on bed, looking at viewer, embarrassed, heavy blush, shy, biting lip, sweaty, messy hair
+```
+
+### R18 触手（全身·验证模板）
+```
+[artist:ask (askzy)], artist:wanke, artist:ciloranko, [[artist:rhasta]], {chiaroscuro}, wlop, [artist:tidsean], [artist:ke-ta], masterpiece, best quality, highres, rating:explicit, wide shot, full body, {{tentacles}}, many tentacles, tentacle sex, smooth, round tentacles, flesh, inside, organic, meat, pulsating, grotesque, living cave, wet, slime, detailed background, 1girl, nude, silver hair, long hair, hime cut, blunt bangs, sidelocks, hair between eyes, purple eyes, downturned eyes, long eyelashes, pale skin, delicate features, petite, slim, narrow waist, flat chest, small breasts, all fours, doggy style, from behind, looking back, looking at viewer, open mouth, {{torn clothes}}, ripped clothing, torn pantyhose, torn stockings, thighhighs, tentacle around body, tentacle around arms, tentacle around torso, tentacle around waist, tentacle around legs, restrained, tentacle in pussy, tentacle penetration, creampie, {semen overflow}, {{excessive cum}}, cum covered, cum on body, cum on face, cum on hair, cum on back, cum drip, {heavy-lidded eyes}, empty eyes, dazed, limp, exhausted, {embarrassed}, shy, blush, tears, drooling, sweaty
+
+---
+
+## 工具人男角色 & POV 视角
+
+> NSFW 双人/多人图中「不重要的男配角」归纳。原则:**不给他人设**——不写具体外貌/发型/表情/服装,只保留能构成体位的身体存在感,注意力锁死在女孩。
+
+### 工具人男三层 tag 策略
+
+| 层级 | 策略 | 标签 |
+|------|------|------|
+| 匿名词条 | 男完全不可辨认(最强) | `anonymous`, `anonymous male`, `faceless male`, `face obscured`, `face hidden`, `shadowed face`, `silhouette` |
+| 局部词条 | 只露身体某部分 | `offscreen`, `male torso`, `waist down`, `penis`(配体位用), `hands`(掐脖/抓发时) |
+| 注意力锁定 | 焦点钉在女孩 | `solo focus`(放女孩侧), `looking at viewer`, `eye contact`;男孩框全部 `[tag]` 或 `0.5::tag::` 降权 |
+
+### POV vs 第三人称选择
+
+| 诉求 | 方案 | 组合 |
+|------|------|------|
+| 女主体感/特写(嘴·手·射精) | **第一人称 POV**,男=观众不出场 | `pov, looking at viewer, eye contact, 1girl`;细节:`from below`(仰视)、`selfies`;缺点:无法表达男的身体压迫 |
+| 体位展示/支配感(ryona·abuse) | **第三人称双人**,男入画但只留压迫存在 | `faceless male, face obscured, shadowed face, dark skin, tall male, muscular male, broad shoulders, nude, solo focus` |
+
+强烈建议第三人称时**绝对不写**男的具体发型/发色/五官/表情/服装(抢戏);**保留**肤色+体格(身高差/力量差压迫感)+ nude。男孩框整体降权,女孩框正常/加权。
+
+### 复用模板插槽
+
+**插槽A · 第三人称工具人男通用块**(用于 ryona/abuse 体位场景):
+```
+1boy, faceless male, face obscured, shadowed face, dark skin, tall male, muscular male, broad shoulders, nude, dominant, sadistic, [体位动作]
+```
+
+**插槽B · 第一人称 POV(男隐藏)**:
+```
+1girl, pov, looking at viewer, eye contact, [体位动作], [女孩表情]
+```
+
+**插槽C · 双人 (通用结构)**:
+```
+[画师串], masterpiece, best quality, rating:explicit, [场景·光照],
+1girl, [角色锚点], [表情], [体位·女孩侧], solo focus, looking at viewer |
+1boy, faceless male, face obscured, [肤色·体格], nude, [体位·男孩侧]
+```
 ```
