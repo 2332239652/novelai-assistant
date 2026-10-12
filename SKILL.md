@@ -19,10 +19,15 @@ description: NovelAI 提示词专家，精通 V5/V4.5/V4/NAI3 全模型。V5 优
 >
 > ⚠️ **免费电量默认约束（2026-09-14 用户明确要求，最高优先级）**：**用户没有明确指出时，生图参数必须保持在 V5 每周免费电量的覆盖范围内**——Steps ≤28（推荐 20-23）+ 常规分辨率（832×1216 / 1024×1024 / 1216×832 等标准档）+ 单张（n_samples=1）+ 无 base image（img2img 计费）+ **不加参考图**（Vibe 编码 2 Anlas/张）。大尺寸、高步数、批量、img2img、参考图都会落到 Anlas 计费。仅当用户明确要求时才突破，且最好先说明会消耗 Anlas。
 >
-> ⚠️ **鉴权排查（2026-09-11 实测）**：`401 Unauthorized` 只代表 persistent token（`pst-` 开头、68 字符）失效/被吊销，**不是额度问题**（额度不足会返回 402/429 或 200 附带用量上限，绝不会是 401）。判定方法：用令牌请求 `https://image.novelai.net/user/subscription`——**200=有效 · 401=失效**。国内网络需 `--proxy http://127.0.0.1:7890` 才连得上官方（直连超时）。令牌存放于 `$DSH_HOME/.credentials.yaml` 与 `$DSH_HOME/.env`（**两处都要改**），改后必须重启会话/MCP 才生效。
+> ⚠️ **鉴权排查（2026-09-11 实测）**：`401 Unauthorized` 只代表 persistent token（`pst-` 开头、68 字符）失效/被吊销，**不是额度问题**（额度不足会返回 402/429 或 200 附带用量上限，绝不会是 401）。判定方法：用令牌请求 `https://image.novelai.net/user/subscription`——**200=有效 · 401=失效**。本机需 `--proxy http://127.0.0.1:7890` 才连得上官方（直连超时）。令牌存放于 `<DSH_HOME>\.credentials.yaml` 与 `<DSH_HOME>\.env`（**两处都要改**），改后必须重启会话/MCP 才生效。
 
 ---
 
+> 🔴 **本环境的生图通道（2026-09-29 重构后，先读这段）**：本环境**不再直连 NovelAI 官方**。旧 extension（`<NovelAI_MCP>`，官方 `image.novelai.net` / 镜像站直连，`pst-` 令牌、Anlas 计费、SG 隧道代理）**已停用**（官方批量封号、合租号渠道断裂），源码仅保留供回滚；生图全部改走第三方积分站 **novelai.me**（`api.novelai.me`，`uai_` 令牌、**积分**计费、Basic Auth 用户名固定 `api`）。
+>
+> 因此本文**第一～三部分**里的官方口径（Anlas 计价、每周免费电量、Flagship Model 额度、`pst-` 令牌、官方 UC 预设、镜像代理/隧道）**只在与官方客户端对照时成立**；本环境实际出图一律以 **第四部分**为准（双通道、积分单价、`init_images` 被静默忽略等实测约束）。
+>
+> 三条「N」别混：**官方** = `novelai.net`／`image.novelai.net`（英文、美元、Anlas、`pst-`）｜**积分站** = `novelai.me`／`api.novelai.me`（中文、积分、`uai_`、兑换激活码、「4人共享 Flagship Model」）｜**旧 extension** = 直连官方、复用合租号（已停用）。
 # 第一部分：V5 导演式提示词法（RECOMMENDED · 首选）
 
 > **一句话总结**：V5 更适合「**自然语言描述场景、关系、动作和氛围 + 角色框隔离角色信息 + 少量标签锚定角色/关键元素**」。这是官方能力（更强自然语言与角色框分工）结合社区/本地实测形成的工作流建议，不是官方规定的唯一提示词格式。权重、UC、画师串和参数都应按目标逐步增加，避免把经验规则当成模型硬约束。
@@ -51,12 +56,28 @@ description: NovelAI 提示词专家，精通 V5/V4.5/V4/NAI3 全模型。V5 优
 | `1.2::faded edges, partial fade out::` | 单组 ×1.2 | 边缘处理等次要点 |
 | `0.9::ningen mame::` / `0.75::artist:mignon::` | 画师权重梯度 | **主次混合**（见下） |
 | `0.55::artist:na_tarapisu153::` | 低权重补充画师 | 辅助点缀 |
+| `0.8::draw body like artist:henriiku (ahemaru)::` | **人体定向借用** | ⭐ 只让该画师贡献人体结构，不污染整体画风（见下） |
 | `{tag}` ×1.05 / `{{tag}}` ×1.1025 | 花括号弱加强 | 微调 |
 | `-1::realistic::` / `-0.8::muted colors::` | **负强调**（V4.5+） | 定向移除/反转概念 |
+| `0::ai-generated::` | **零权重占位** | 写进 UC 但不激活，占位以便随时调权 |
 
-> ⚠️ **V5 负强调与画师串风险分级（2026-08-25 第七轮三轮对照实测后修订）**：
+> ⭐ **`draw body like artist:X` 人体定向借用（2026-10-09 韩网 391 样本新发现，44.5% 使用率）**
+> ```
+> 0.8::draw body like artist:henriiku (ahemaru) ::
+> ```
+> 与普通 `artist:X` 的区别：它把画师影响**限制在「身体绘制方式」单一维度**，因此可以安全叠在另一个主导画师串之上而不互串。实测高频四层结构：
+> ```
+> 1.1~1.5::artist:A::                          ← 主导画风
+> 0.6~0.9::draw body like artist:B::           ← 只借人体比例/结构
+> 0.8~1.0::artist:C, artist:D, artist:E::      ← 氛围与配色
+> 0.3~0.5::artist:F::                          ← 兜底统一
+> ```
+> ⚠️ 语法注意：`::` 闭合前**留一个空格**（`... (ahemaru) ::`），可规避以 `)`/数字结尾的名紧贴 `::` 的解析风险。
+
+> ⚠️ **V5 负强调与画师串风险分级（2026-08-25 第七轮实测提出 · 2026-10-09 韩网 391 样本修订）**：
 > - **官方/教程依据**：官方负强调文档和 V5 教程都给出过轻度负强调示例，例如 `-1::hat::`、`-2::realistic::`、`-0.8::muted colors::`；这只能证明语法和个别示例可用，不能保证所有值、标签和客户端都稳定。
 > - **本环境实证①（负强调）**：大倍数负强调（如 `-5::artist collaboration::`）在镜像代理路径上曾五连崩（溶解噪点）；这是本地路径/组合的风险，不应归因给 V5 全部环境。
+> - **🔴 2026-10-09 大规模样本反证**：韩网 391 张元数据完整的 V5 成图中，**92.8% 使用了正面词内负强调**，且 `-5`（63 张）、`-6`（24 张）大量稳定出图、无崩坏。**结论：大倍数负强调本身不是 V5 的限制，此前崩坏应归因于当时的镜像通道/特定组合**，不要在正常通道下回避 `-5::` / `-6::`。
 > - **本环境实证②（交互效应，对照实验）**：**多画师权重梯度串 × 透明背景生成** 单独各自安全、叠加出崩坏图——画师串+透明=噪点（flat_blocks 18.5%），去画师串+透明=干净（67.6%），留画师串+关透明=干净（61.0%）。**透明背景图不要配多画师权重梯度 base**，改用画风词直述或 ≤2 位画师
 > - **排查规则**：出现"噪点溶解"→ 先移除画师串再试 → 再移除负强调 → 逐个加回定位元凶；怀疑镜像时可 `NOVELAI_USE_PROXY=false` 走官方对照
 > - **V4.5 已验证的画师串（如茉子串含 `-5::...`）不能原样用于任何模型的新迁移**，需改写为纯度权重梯度写法（见 1.8）；OC 表里的 Art Style 列同理按此改写
@@ -66,6 +87,19 @@ description: NovelAI 提示词专家，精通 V5/V4.5/V4/NAI3 全模型。V5 优
 - 权重值不必整数：**0.55/0.75/0.95/1.5/3 常见**，表达"主次从属"
 - **画师权重梯度**（角色是主导位）：如 `1.5::rella::, 0.95::kedama_milk::, 0.9::ningen mame::, 0.75::artist:mignon::, 0.55::artist:na_tarapisu153::` —— 主导画师 1.5，其余 0.5-0.95 递减，避免平均混合互相污染
 - 本地/社区经验：多画师混合可从 CFG 3.5-4 试起；这不是跨模型、跨画师串的通用最佳值。单一画师也不应默认拉到 7，先以 5-6 和同一场景对照。
+
+> 📊 **韩网 391 样本实测权重分布（2026-10-09）**：权重实际使用区间 **0.05 – 2.0**，中枢在 **0.3 – 0.9**；主导画师 1.1–1.5，辅助 0.3–0.9，点缀 0.05–0.3。单图最多 15 位画师（5–9 位最常见，n=184）。
+>
+> 🔗 **画师数与参数的联动（实测，与直觉相反）**：
+>
+> | 画师数 | CFG 中位 | steps 中位 |
+> |---|---|---|
+> | 0 位 | **6.0** | 25 |
+> | 1–2 位 | **4.0** | 25 |
+> | 5–9 位 | **5.0** | 23 |
+> | 10+ 位 | **5.0** | 23 |
+>
+> **画师越多，CFG 与步数越要降**（多画师互相干扰时高 CFG 会放大冲突）；无画师时反而可放心拉高 CFG。
 
 ## 1.3 画师标签写法（V5 需实测，不把分词器猜测当规则）
 
@@ -146,18 +180,110 @@ rating:sensitive（锁分级防越界）, variant set, twitter username, realist
 ```
 - 水彩/老图风可再加 `sepia`；漫画分镜页加 `monochrome` 冲突时改放 base 权重控制
 
+### 🆕 🔴 UC 长度策略修正（2026-10-09 韩网 391 样本实测）
+
+**本批高阶作者的 UC 长度中位 = 1112 字符，约等于正面 prompt（中位 578 字符）的 2 倍。**
+此前 skill 的 UC 五层模板方向正确，但**长度上限应放宽到 800–1200 字符**——不要因为它长就裁剪。
+
+> 54 种不同 UC 字符串中，**前 3 种覆盖 190 张（48.6%）**，说明 UC 存在高复用模板；实测最长 1847 字符。
+
+**核心 UC token（≥60% 作品共有，共 37 项，可直接作为基底）**：
+```
+very displeasing, lowres, worst quality, jpeg artifacts, artistic error,
+bad quality, logo, film grain, multiple views, dithering, blank page,
+scan artifacts, chromatic aberration, halftone, screentone, too many watermarks,
+bad hands, unfinished, negative space, incomplete, nsfw, disfigured,
+disorganized colors, cheesy, signature, extra legs, deformed, extra digits,
+bad eyes, monochrome, bad hand structure, fewer digits, 1990s (style),
+artist:milkpanda, fewer details, reference, chibi
+```
+
+**标准 UC 头（本语料最通用，可直接复用）**：
+```
+nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality,
+jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone,
+multiple views, logo, too many watermarks, negative space, blank page,
+```
+
+**🆕 画师黑名单（这批作者的共识，62% / 53% 使用率）**：
+```
+artist:xinzoruo, artist:milkpanda
+```
+
+**🆕 UC 进阶写法（韩网实测）**：
+- `0::ai-generated::` —— **零权重占位法**：写进 UC 但不激活，占位以便随时调权
+- `1.2::worst quality::` —— 给负面词本身加权重强化
+- `3::2koma::, 2::multiple views::` —— 用**正权重**在 UC 里压制分格
+- `red bed, red sheet, red bedding` —— **场景级定向排除**（防止不该出现的红色床品串味）
+
 ## 1.6 V5 推荐参数速查
 
 | 参数 | V5 推荐 | 说明 |
 |---|---|---|
 | **Model** | V5 Full（默认）/ V5 Curated | Curated 输出受限但画风稳定、安全；Full 表现广但更飘 |
-| **Steps** | 20-23（社区实测稳定带） | Opus ≤28 步 + 常规分辨率 + 单张 = 走每周免费电量；先低步数看构图 |
+| **Steps** | **23–25（产出向甜点区）**；18–21 留给刻意粗粝的画风；28 为上限 | Opus ≤28 步 + 常规分辨率 + 单张 = 走每周免费电量。⚠️ **步数不是「越高越好」，也不是「23 最优」**——它是**每个画风族固定下来的常量**，与 CFG 联动（见下） |
 | **Guidance (CFG)** | **5-6（官方 V3+ 通用建议；V5 可从 5 起步）** / 3.5-4（多画师混合的本地/社区经验） | 高值更贴提示但可能过饱和；低值可能更柔和。V5 专属最佳值尚无公开官方规范 |
 | **Sampler** | V5 通常从 `k_euler_ancestral` 开始（社区/客户端经验） | 不是 V5 的官方唯一推荐；按目标和客户端可比较其他 sampler |
 | **Noise Schedule** | 本地 MCP 对 V5 默认 `karras` | API/UI 行为与客户端实现有关，不将“强制 karras”写成官方模型规则 |
+| **cfg_rescale** | **默认 0；仅当 CFG ≥6 时考虑 0.3–0.4** | 🆕 韩网实测：391 张中 316 张为 0（不启用），启用者（75 张）集中在 CFG ≥6 或画师数 ≤2 的场景 —— 印证它是「高 CFG 过饱和」的补偿手段 |
 | **Prompt 预算** | Full 约 1471 / Curated 约 703 个 effective tokens（官方模型页） | 官方按 base prompt 表述该限制；角色框的实际计数/校验由当前 UI/API 处理，不要自行推导一个总预算 |
 | **模式** | Anime（默认）/ Furry | 切换后 prompt 效果大变：误切 Furry 会突然出兽耳；兽人/凯莫题材可主动切换 |
 | Add Quality Tags | 默认开（Standard 档） | Standard=`very aesthetic, masterpiece, no text`；Light=`very aesthetic, amazing quality, no text` |
+
+> ✅ **韩网 391 样本参数交叉验证（2026-10-09）**：这批高阶作者的实际选择与本 skill 推荐**高度吻合**——
+>
+> | 参数 | 实测分布 | 主导值 | 与 skill 推荐 |
+> |---|---|---|---|
+> | steps | 23×199 · 25×105 · 28×43 · 24×22 · 21×12 | **23** | ✅ 落在「20-23 稳定带」 |
+> | CFG | 5.0×239 · 6.0×42 · 7.2×38 · 7.0×23 · 4.0×20 | **5.0** | ✅ 印证「V5 可从 5 起步」 |
+> | sampler | `k_euler_ancestral` 390 / `k_euler` 1 | **k_euler_ancestral** | ✅ |
+> | noise | `karras` **391/391（100%）** | **karras** | ✅ |
+> | 分辨率 | 832×1216 ×339 · 1024×1024 ×32 · 1216×832 ×16 | **832×1216** | ✅ 在免费包络内 |
+> | cfg_rescale | 0.0×316 · 0.4×35 · 0.3×14 | **0.0** | ✅ 默认关 |
+>
+> 这组独立样本（来自韩国社区，非本机通道）有效佐证了上述参数推荐不是本环境特例。
+
+### 🔬 步数到底怎么定（2026-10-09 双合集 892 张实证，纠正「越高越好」）
+
+**决定性事实：天花板是 28，不是 23。** 两套互相独立的合集——中文画风合集 501 张 + 韩网作品集 391 张，**合计 892 张 V5 成图，没有任何一张超过 28 步**。这个上界由免费电量包络决定（≤28 步 + ≤1MP + 单张 = 0 积分），**不是画质拐点**。
+
+**但两套合集的重心完全相反**：
+
+| 步数 | 中文 501 画风合集 | 韩网 391 作品集 |
+|---|---|---|
+| 14–22 | 38 张 (7.6%) | 21 张 (5.4%) |
+| **23** | 7 张 (1.4%) | **199 张 (50.9%)** |
+| 24 | 1 张 (0.2%) | 22 张 (5.6%) |
+| **25** | 0 张 | **105 张 (26.9%)** |
+| 26–27 | 1 张 (0.2%) | 1 张 (0.3%) |
+| **28** | **450 张 (89.8%)** | 43 张 (11.0%) |
+| ≥29 | 0 张 | 0 张 |
+
+> 中文合集定位是「画风展示」→ 90% 顶格 28 步求完成度上限；
+> 韩网合集定位是「成品产出」→ 78% 落在 23–25 步的产出甜点区。
+
+**🔑 关键：步数是「画风族的常量」，不是「每张图的最优解」**
+
+韩网语料里 12 个风格族中 **10 个族内步数完全一致**（72 张族全是 25、60 张族全是 23、38 张族全是 23、26 张族全是 23…）。说明作者**调好一个画风就固定步数整季沿用**——步数是随画风配方一起冻结的参数，不随单张图浮动。
+
+**步数与 CFG 联动（别单独调）**：
+
+| 步数档 | 样本 n | CFG 中位 | 画师中位 | 典型组合 |
+|---|---|---|---|---|
+| 18–21 | 20 | 6.0 | 12 | 高画师数 + 中高 CFG |
+| 22–24 | 222 | 5.0 | 5 | **23 + 5.0（167 张）**← 最主流 |
+| 25–26 | 106 | 5.0 | 5 | 25 + 5.0（72 张） |
+| 28 | 43 | **7.2** | 0 | **28 + 7.2（38 张）**← CFG 必须跟上 |
+
+**实操结论**：
+
+- ✅ **23–25 是产出向甜点区**（韩网 78% 落在此处），日常出图从这里起步
+- ✅ **28 步并非「更好」，而是「另一种配方」**——用 28 步的族往往把 CFG 一起推到 7.0–7.2；23 步的族配 CFG 5.0
+- ⚠️ **只加步数不改 CFG 会改变画风**，不是单纯「提升质量」；要动就成对动
+- ⚠️ **低步数（14–21）是刻意的风格选择**，不是省事：中文合集里低步数组的 `flat color`(44%)、`oekaki`(27%)、`lineart`(27%)、`jaggy`(15%) 出现率显著高于 28 步组（22% / 8% / 12% / 10%），即**低步数被用来保留草稿感与粗线条**
+- ⚠️ **28 步不是「无画师串专属」**：韩网 28 步族 77% 无画师串，但中文合集 28 步族里画师串遍地（5–9 位 179 张、10+ 位 173 张）——**这是合集定位差异，不是步数与画师串存在技术耦合**
+
+> 📌 一句话：**步数是画风配方的一部分，不是画质滑块。不要孤立地「拉高步数求更好」。**
 
 **V5 能力矩阵（截至本次复核）**：
 
@@ -243,6 +369,49 @@ high complexity, anime style illustration, thick lineart, anime coloring, year 2
 - **负强调控感**：`-2::realistic::`（拉回插画感）、`-0.8::muted colors::`（提鲜艳）、`-1::monochrome::`（找回色彩）
 - **非标准质量标签实验**：`great quality` 被部分社区作例用于水彩/曝光风格；不要把低质量标签当通用画风控制器。
 - 模糊定位：人物大小众不同，可以用 `miniboy`、`shota` 等体型标签
+
+### 🆕 韩网 391 样本实测的负强调配置表（2026-10-09，92.8% 使用率）
+
+这批高阶作者把负强调当**常规配置**而非救火手段。按症状直接取用：
+
+| 症状 | 处方 | 样本命中 |
+|---|---|---|
+| 多画师图被画成"合作签名图" | `-1::artist collaboration, mosaic::` | 304 张 |
+| 需要解除马赛克 | `-1::artist collaboration, mosaic::` | 174 张 |
+| 镜头被自动拉远 | `-2::wide shot::` | 60 张 |
+| 画面被切成多格 / 冒出对话气泡 / 出现背景路人 | `-2::multiple views, speech bubble, text, background human::` | 60 张 |
+| 解剖结构崩坏 | `-5::anatomical nonsense::` | 60 张 |
+| 画风被简化成平涂 | `-3::simple illustration::` / `-2::flat color::` | 44 / 32 张 |
+| 出现粗黑边 | `-1.7::thick border::` | 11 张 |
+| 肢体冗余 | `-18::thighs, shoulders, legs, arms::` → 实际写法 `-1::` 起 | 18 张 |
+| 严防画师互串（最强档） | `-6.0::artist collaboration::` | 24 张 |
+
+> 幅值实测分布：`-1`(233) > `-2`(179) > `-3`(104) > `-1.5`(78) > `-5`(63) > `-6`(24)
+
+### 🆕 多语言混用：母语自然语言补位（2026-10-09 韩网实测）
+
+**36.1%（141/391）的作品在角色框内直接使用韩语**，模型能正确执行。本样本 0% 使用日文/中文 —— 说明这不是日语专属能力，而是 V5 通用的多语言特性。
+
+| 韩文原句 | 含义 | 用途 |
+|---|---|---|
+| `대머리` | 秃头 | 角色特征 |
+| `넘어져 쓰러짐` | 摔倒 | 动作 |
+| `개가 옷을 잡아 물어 뜯음` | 狗咬住衣服撕扯 | 复合动作 |
+| `앞치마를 묶음` | 系围裙 | 动作 |
+| `화난 표시` | 生气表情 | 表情 |
+| `아쿠아의 뺨을 양손으로 꼬집는다` | 双手捏住 Aqua 的脸颊 | 精确交互 |
+| `옆모습, 마주보고, 테이블을 사이에 두고` | 侧脸、面对面、隔桌 | 机位关系 |
+
+> 💡 **实操规则**：当英语 Danbooru tag 无法精确表达「复合动作/精确交互关系」时，**直接在角色框里用母语自然语言描述**，比硬拼 tag 更可靠。此规则与 §1.7「离散事实用 tag、关系与空间用句子」互为补充。
+
+### 🆕 NSFW 复合镜头词串（韩网实测可直接复用）
+
+```
+pussy, penetration, large insertion, stomach bulge, onahole position,
+grabbed by another's hand, squeezed by another hands, head back, head up,
+fucked silly, arms, legs, thighs, shoulders, teardrop, turned pale, scared
+```
+配套技法：`faceless male`（男方不画脸，18.9%）、`uncensored`（19.7%）、`minigirl`（透视缩小人物，用于体内/手中等极端镜头，7.2%）、`background human`（主动生成背景路人，15.3%）。
 
 **V5 画师串迁移规则（经验规则，不是语法禁令）**：
 - V4.5 老配方中的裸标签、`[ ]`/`{ }` 和数值权重不应未经对照直接宣称“不能用于 V5”；先保留原串做基线，再建立一个简化版本。
@@ -447,9 +616,163 @@ ningen_mame, onineko, artist:akizero1510, artist:wanke, [[artist:akakura]], 1.15
 4. V5 建议英文标签（更稳）；V4.5 Full > Curated（硬核）
 5. **多角色 NSFW**：参考 1.4 `another` 互动写法 + `1boy, faceless, head out of frame` 处理男方
 
+### 🔬 男性角色的处理经验（2026-10-09 韩网 391 样本专项统计，191 张含男角）
+
+> 统计母体：318 张使用角色框的图中，**191 张（60.1%）含男性角色框**，共 253 个男性框 vs 307 个女性框。
+> 结论全部来自这批高阶作者的实际产出，不是理论推演。
+
+**① 核心规律：男方框 ≈ 女方框的 6 成篇幅**
+
+| 指标 | 男性框 | 女性框 |
+|---|---|---|
+| 框内标签数中位 | **12** | **18** |
+| 框内字符数中位 | 157 | 210 |
+
+**同一张图内，83.9% 的男性框比女性框短；51.1% 短到女性框的 6 成以下。**
+即：**男方的信息预算要主动砍半**，把细节全部让给女方框。
+
+**② 无脸是主流，但用的是「结构化无脸」而非标签堆叠**
+
+| 写法 | 占比 |
+|---|---|
+| 完全不含任何面部词汇（`smile`/`face`/`eyes`/`blush`/`looking at` 全无） | **43.1%** |
+| 显式 `faceless male` | 40.6% |
+| `partially visible`（局部可见） | **31.2%** |
+| `out of frame` 系列 | 4.7% |
+| `head out of frame` | 0.8% |
+
+> ⚠️ 关键洞察：**43% 的男性框根本没写 `faceless male`，它们靠「不写任何面部词汇」来达成无脸**。
+> 也就是说 `faceless male` 不是必需的——**只要你不在男框里提脸，V5 就不会给他画脸**。这比反复强调 `faceless` 更省 token。
+
+**③ 男方信息压缩的三条实战路线**
+
+| 路线 | 写法 | 实测占比 | 说明 |
+|---|---|---|---|
+| **A · 部位化** | 只写器官：`boy, penis, only penis, erection, huge penis, veiny penis` | 5.1% 走极端，但 `penis` 类词整体出现在多数族 | 最短，适合器官特写镜头 |
+| **B · 局部可见** | `1boy, ..., partially visible, white judo uniform, black belt` | 31.2% | 全身在场但只画一部分，保留互动感 |
+| **C · 只写在场感** | `1boy, black short-sleeved shirt, black pants unzipped, one erect penis out of pants, standing on the left side of the bed, calm ordinary expression, looking down at her` | — | 完整但克制，**有脸也不画脸细节** |
+
+**④ 服装处理：裤子单独脱，上衣基本保留**
+
+| 写法 | 占比 |
+|---|---|
+| `pants down` | **21.3%** |
+| `pants unzipped` | 4.0% |
+| `one erect penis out of pants` | 2.4% |
+| 保留上衣（`short-sleeved shirt` 等） | 9.5% |
+| `clothed sex` | 2.4% |
+| 男方 `completely nude` | 仅 3.6% |
+
+> 💡 **「裤子褪到一半 + 上衣还在」是这批语料的主流男方造型**，比全裸男主更常见，也更容易画对。
+
+**⑤ 男方动作：站立 + 抓握 + 俯视，三个动作占满**
+
+| 动作 | 占比 |
+|---|---|
+| `standing` | 34.0% |
+| `gripping/holding/grabbing` | 29.6% |
+| `watching / looking down at her`（只给视线不给脸） | **16.6%** |
+| `thrusting` | 13.8% |
+| `kneeling` | 10.3% |
+| `behind her` / `beside her` | 7.5% / 5.9% |
+| `sitting` / `lying` | 4.7% / 7.1% |
+
+> `looking down at her` 是很聪明的写法：**给了男方一个「动作」却没有给他「表情」**，观者知道他在看，但画面不需要画出他的脸。
+
+**⑥ 互动归属：`mutual#` 优先，`another` 少量**
+
+| 语法 | 占比（560 个框） |
+|---|---|
+| `mutual#sex` / `mutual#double penetration` / `mutual#sex from behind` / `mutual#anal` | 16.4%（最高） |
+| `source#...`（主动方） | 13.4% |
+| `target#...`（承受方） | 11.2% |
+| `another` 自然语言指代 | 10.4% |
+| `pov` | 2.0% |
+
+**高频互动标签逐字（可直接复用）**：
+```
+mutual#sex · mutual#double penetration · mutual#sex from behind · mutual#anal
+source#fellatio · target#fellatio · source#handjob · source#ejaculation
+source#fingering · target#fingering · source#full nelson · target#full nelson
+source#object insertion · target#object insertion · target#cum on body
+source#pinning down · source#arms held · source#legs held · source#clothes pull
+```
+
+> ⚠️ **`another` 只在 10.4% 的框里出现**——这批作者更偏爱 V4.5 遗产的 `source#`/`target#`/`mutual#` 显式语法来做归属，而不是全靠自然语言。中文 `another` 路线可用，但不是唯一解。
+
+**⑦ 男方外形：强类型化，服务于反差**
+
+| 特征 | 占比 |
+|---|---|
+| `muscular` | 43.1% |
+| `fat man` | 8.3% |
+| `old man` | 5.1% |
+| `대머리`（韩文·秃头） | **40.3%** |
+| `dark skin / dark-skinned` | 2.0% |
+| `belly hair / body hair / chest hair` | 2.8% |
+| `netorare` / `ntr` | 2.0% |
+| 生殖器细化（`veiny`/`erection`/`testicles`/`large`） | 各 1.2%–5.1% |
+
+> 🔑 **`대머리`（秃头）单族使用 102 次**，集中在三个同门目录——说明这是**该画风族的一个角色设定特征**，不是通用规则。但方向值得注意：**男方走「强类型化」而不是「美型」**（秃/胖/老/肌肉），用外形反差烘托女方。
+
+**⑧ 坐标：男方不需要特殊摆放**
+
+253 个男性框的 `centers` 中位 = **(0.50, 0.50)**，与女性框完全一致；仅 5.9% 落在画面边缘。
+→ **不需要刻意把男方推到角落**，正常给坐标即可，「少写信息」就已经达成弱化效果。
+
+**⑨ 可复用模板（三档，按分寸递增）**
+
+```
+① 器官特写档（最短，5% 语料用法）
+   boy, penis, only penis, erection, veiny penis, testicles
+
+② 局部在场档（最主流，31% 用法）★ 推荐起点
+   1boy, faceless male, tall, muscular male, partially visible,
+   pants down, penis, thrusting, gripping her hips,
+   white judo uniform, black belt
+
+③ 完整克制档（有脸但无表情，适合需要环境的场景）
+   1boy, black short-sleeved shirt, black pants unzipped,
+   one erect penis out of pants, standing on the left side of the bed,
+   calm ordinary expression, looking down at her
+```
+
+> 📌 **一句话总结**：男方处理的核心不是「怎么藏」，而是**「怎么少写」**——篇幅砍到女方的 6 成、裤子只脱一半、动作只留站/抓/看三个，剩下的全部预算给女方框。
+
+### 🔴 精读纠正（2026-10-09 补 · 12 张全图人工通读后修订）
+
+> 上面 ①–⑨ 全部来自统计。**对着图逐一核对后，有一条必须推翻**——统计能看频率，看不出作者的真实意图。
+
+**`faceless male` 不会让男方没脸。** 三条独立证据：
+
+| 证据 | 内容 |
+|---|---|
+| 看图 | 样本 04（道场对峙）/ 05（三男场景）/ 07（献花场景）**三张都写了 `faceless male`，画面里男方都有完整的脸**（侧脸、微笑、秃头特征清晰可见） |
+| 代码 | 130 个含 `faceless male` 的框里，**66.9%（87 个）同时写了面部词汇**（`smile`/`grin`/`laugh`/`smirk`） |
+| 反证 | 样本 04/05/07 都**没有**给男方写任何脸部细节词，但脸照样画出来了 → 「不写面部词就能无脸」**也不成立** |
+
+> **正确理解**：`faceless male` 更接近**「这是个不重要的男性配角」的语义标签**，意思是「不用刻画他 / 不给脸部特写」，**而不是「把脸抹掉」**。
+> **真要彻底去脸**：只能用 `head out of frame` 或构图裁切——但这批语料里 `head out of frame` 只占 0.8%，说明**这批作者根本不在意男方露脸**（他们更在意把表情刻画预算留给女方）。
+
+**另一条重要发现：角色框有近一半不是「人」。**
+832 个框里 **378 个（45.4%）完全不含人物名词**，而被用作：手/肢体单框（35.3%）、道具（22.4%）、文字标题（6.1%）、人群背景（3.2%）、视觉特效（1.3%）。
+逐字样本：
+```
+hand entering frame from the edge of the screen, thumbs up, director's hand
+puddle, wet tatami, urine puddle spreading on the floor
+large wet stain on the white sheet
+speech bubble, text: "Action!"
+faceless crew members applauding, clapping hands, smiling, in the background
+```
+> 🔑 **这才是角色框的正确心智模型：不是「一人一框」，而是「一个画面元素一框」**。
+> 手、体液、道具、文字各自独立占框、各自带坐标——这就是它们能精确调度构图（左手在左、右人在右）却几乎不写方位词的原因。
+> 详细报告见 `kr-n5-corpus-analysis.md` §十一。
+
 ## 3.8 本子/连续多页 NSFW 漫画 ⚠️
 
 **核心原则**：角色一致性靠参考图链 + 强加权角色标签；男方越省越好；画面聚焦女性与关键部位；背景简单明亮；分镜有节奏。
+
+> 📌 **男方处理的量化标准见 §3.7 末尾「男性角色的处理经验」**（韩网 391 样本专项统计）：男方框篇幅砍到女方的 6 成、43% 的框靠「不写面部词汇」达成无脸、`partially visible` 31%、`pants down` 21%。下面的三档方案与那批实证一致，可配合使用。
 
 **男方三档方案**：
 | 方案 | 写法 | 适用 |
@@ -457,6 +780,10 @@ ningen_mame, onineko, artist:akizero1510, artist:wanke, [[artist:akakura]], 1.15
 | POV 第一人称（首选） | `pov, first person view` | 观者=男方，零翻车 |
 | 局部出镜 | `hand only, arms only, penis, partial body` | 显示互动不画全身 |
 | faceless 兜底 | `faceless male, faceless, {no face}, head out of frame` | 全身但无脸（脸对脸场景易翻车，改用 POV） |
+
+> 🆕 **韩网实证补充（2026-10-09）**：POV 在该语料里只占 2.0%，主流其实是**「多角色框 + 男方结构化无脸」**路线——
+> 女方正脸出镜、男方在场但 `partially visible`（31.2%）或干脆不写面部词汇（43.1%）。
+> 三档方案偏向「单人视角」，语料偏向「双人分框」，两种都能用，按目标构图选。
 
 **画面聚焦**：景别（`portrait`/`upper body`/`cowboy shot`/`close-up`/`head out of frame`）、部位焦点（`pussy focus`/`breast focus`/`ass focus`/`penetration focus`）、表情张力核心（`looking at viewer`/`half-lidded eyes`/`ahegao`/`blush`/`tears`/`drooling`）、身体细节（`sweat`/`wet`/`glossy`/`hickeys`）、明暗（`bright lighting` 主力；`chiaroscuro` 少用）、画风（`soft shading`+`sharp highlights`+`painterly`，阴影用邻近色）
 
@@ -468,60 +795,214 @@ ningen_mame, onineko, artist:akizero1510, artist:wanke, [[artist:akakura]], 1.15
 
 ---
 
-# 第四部分：MCP 工具使用（本环境 NovelAI MCP）
+# 第四部分：本环境生图通道（novelai.me 积分站）
 
-> 本环境 MCP 当前运行版是本地 `<NovelAI_MCP>/dist/index.js`（stdio，V5 默认走镜像代理；可用 `NOVELAI_USE_PROXY=false` 强制官方直连）。下面的参数说明只描述当前本地实现，不等同于 NovelAI 官方 SDK 的永久契约；修改 `src` 后必须重新构建并重启会话。
+> 本部分描述**当前实际部署**的 extension，取代旧版「NovelAI 官方 extension」的全部参数说明。旧的官方 extension（`<NovelAI_MCP>`，参数为 `base_prompt` / `aic` / `variety` / `center_x` 那一套）**已停用**，其参数名与本节**不通用**，不要混用。
+>
+> 事实源：`<NovelAI_MCP>\README.md` + `src\index.ts`（构建版 v2.0.0）。本节只描述本地实现，不等同官方 SDK 的永久契约；**改动 `src` 后必须 `npm run build`，然后重启会话/应用**——extension 进程不热加载（实测：2026-09-29 16:11 重建 dist 后，15:22 启动的进程仍在跑旧构建，直到重启才生效）。
 
-## 4.1 关键参数（V5 导演式写法对应）
+## 4.0 组件与双通道（自动路由，不需手工选）
 
-| MCP 参数 | 说明 |
+- **extension 名**：`novelai-me`；入口 `<NovelAI_MCP>\dist\index.js`
+- **注册位置**：`~/.dsh/profiles/web/cordis.patch.yml` 的 `extension-novelai-me`（注入 `NOVELAI_ME_API_TOKEN` / `NOVELAI_ME_BASE_URL` / `NOVELAI_ME_SAVE_DIR`）
+- **token**：存 `~/.dsh/.env` 的 `NOVELAI_ME_API_TOKEN`（`uai_` 前缀）；站点「个人中心 → 开放接口」自助签发，可选 30 天／90 天／长期，最多保留 3 个
+
+| 通道 | 端点 | 鉴权 | 能力 |
+|---|---|---|---|
+| **A · 中转站 sdapi** | `https://api.novelai.me/sdapi/v1/txt2img` | `Basic base64("api:<uai_ token>")`（用户名固定 `api`） | **仅文生图**，不需要浏览器 |
+| **B · 网页 SSE** | `https://api.novelai.me/api/v1/generate-image/stream` | 浏览器登录会话 JWT（经 bsk 在已登录页面内 `fetch`，token 不离开页面 origin） | img2img / 角色框 / Vibe 氛围传递 / V5 原生透明背景 |
+
+**路由规则**：不传 `image` / `characters` / `reference_images` / `transparent_background` / `quality_toggle` / `model_mode` → 永远走 A（完全不碰浏览器）；传了**任一** → 需要走 B。
+
+### 🔒 浏览器通道默认关闭（2026-09-30 用户要求，最高优先级）
+
+> **用户口径**：以后使用时**默认只加载能文生图的 API 通道**；进阶的操纵浏览器、登录页面**只有用户明确提到了才打开**。
+
+因此通道 B **不再自动触发**，而是有一道默认关闭的闸门：
+
+| | 默认 | 开启方式 |
+|---|---|---|
+| 通道 A（sdapi 文生图） | ✅ 开 | 无需操作 |
+| 通道 B（浏览器） | ❌ **关** | ① 单次调用传 `allow_browser: true`　② `~/.dsh/.env` 写 `NOVELAI_ME_ALLOW_BROWSER=1`（重启会话） |
+
+- **闸门位置**：`src/access.ts` + `bridge.ts` 的 `evaluate()` / `resolveSessionInner()`——这是所有浏览器访问的**唯一收口**，故网页分支的 `generate_image`、`check_balance`、包络外权威计价全部受控，无路径可绕过
+- **触发闸门的参数**：`image` · `characters` · `reference_images` · `transparent_background` · `quality_toggle` · `model_mode`（不带 `allow_browser: true` 会被 `isError: true` 拦下并给出可操作说明）
+- ⚠️ **闸门检查在 `dry_run` 之前**——否则带 `characters` 的干跑会显示「0 积分、没问题」，真跑才被拦，属于误导（首版踩过，已修）
+- ⚠️ **`allow_browser` 只在用户明确提到浏览器类能力时才传**（img2img / 角色框 / Vibe / 透明背景 / NSFW 与文字渲染所需的关质量标签 / 查余额）；默认不要传
+- ✅ **改动已用真实 stdio JSON-RPC 验证**：默认态 `evaluate`/`resolveSession` 均被拦；`allow_browser:true` 与环境变量两条正向路径均放行；作用域退出即失效；真实出图确认通道 A 未受影响
+- ⚠️ **需重启会话才生效**：2026-09-30 15:14 重建 dist，但当时进程 38508（14:11:56 启动）仍在跑旧构建——与下面 4.0 的「不热加载」同源
+
+> 🔎 **站点自带完整 OpenAPI schema（免费的权威信息源）**：`GET https://api.novelai.me/api/v1/openapi.json`（用 `uai_` token 即可拉取）——113 个 schema、全部端点（含 `/sdapi/v1/*`、`/api/v1/generate-image/stream`、`/api/v1/upscale`、`/api/v1/calculate_cost`、会员／积分／订单等）。
+> **要查参数真名、类型、默认值，先读它，不要靠试错去猜**——试错会真的出图并扣积分（2026-09-29 踩过：传错字段名不会被拒，字段被静默忽略，于是每次探测都真出了一张 832×1216 的图）。
+
+## 4.1 generate_image 参数（v2.0.0）
+
+| 参数 | 说明 | 通道 |
+|---|---|---|
+| `prompt` / `negative_prompt` | 正向 / 负向提示词。写法见 §1.1 三层分工与 §1.7 NL 优先范式 | 全部 |
+| `model` | 9 个可选模型（见下） | 全部 |
+| `width` / `height` | 像素，**64 的倍数**；默认 832×1216 | 全部 |
+| `steps` / `scale` / `sampler` / `seed` | 默认 23 / 6 / `k_euler_ancestral`；V4.5 建议 28 / 6 / `k_dpmpp_2m`。⚠️ **≤28 步才在免费电量包络内** | 全部 |
+| `count` | 张数 1–4。⚠️ **张数=1 才在免费电量包络内**（≥2 张即扣积分，如 1024×1024 出 2 张 = 60 分） | 全部 |
+| `cfg_rescale` | 0–1，缓解高 Guidance 过饱和 | 全部 |
+| `characters[]` | 角色框 `{prompt, negative_prompt, center_x, center_y}`；坐标 0–1 | **B** |
+| `use_coords` | 坐标开关（AI's Choice 的反面）；有 `characters` 时默认 true | **B** |
+| `image` + `strength` | img2img：本地路径 / base64 / data URL；`strength` 默认 0.7 | **B** |
+| `reference_images[]` + `reference_strengths[]` | Vibe 氛围传递（多张时强度和建议 ≤1.0） | **B** |
+| `transparent_background` | V5 原生 RGBA 透明背景 | **B** |
+| `quality_toggle` | 是否自动追加官方质量标签（网页端 Add Quality Tags），默认 true | **B** |
+| `model_mode` | `anime` / `furry`，默认 anime | **B** |
+| `allow_browser` | 🔓 **浏览器通道闸门，默认 false**（不传 = 只走 API 文生图，完全不碰浏览器）。`generate_image` / `check_balance` / `estimate_cost` 都有此参数。**仅在用户明确要求浏览器类能力时才传 true** | 闸门 |
+| `dry_run` | **只估算积分，不生成、不写盘、不扣积分**（出图前先问价）。⚠️ 若同时需要通道 B，闸门检查先于本项执行 | — |
+| `save` / `save_dir` | 默认保存到 `<输出目录>` | — |
+
+> ⚠️ `quality_toggle` 与 `model_mode` 是**网页通道专属字段**（来自站点 schema `AppGenerateImageParams.qualityToggle` / `AppGenerateImageRequest.model_mode` 顶层）。中转站 sdapi **不解析**它们（已用类型探针实测：传非法类型仍 200 静默放行），所以传这两个参数**必须**走通道 B——extension 的路由已按此实现。用途：NSFW、文字渲染、精确画风时要关 `quality_toggle`（自动质量标签含 `no text` / `rating:general`，见 §3.2/§3.7）；兽人题材才切 `model_mode: furry`（误切会突然长兽耳，见 §1.6）。
+
+**可用模型（sdapi 实测返回 9 个）**：`nai-diffusion-5-full`、`nai-diffusion-5-curated`、`nai-diffusion-4-full`、`nai-diffusion-4-curated-preview`、`nai-diffusion-4-curated`、`nai-diffusion-4-5-full`、`nai-diffusion-4-5-curated`、`nai-diffusion-3`、`nai-diffusion-3-furry`（可用采样器：`ddim, ddim_v3, k_dpm_2, k_dpm_2_ancestral, k_dpmpp_2m, k_dpmpp_2m_sde, k_dpmpp_2s_ancestral, k_dpmpp_sde, k_euler, k_euler_ancestral`）
+
+**四个工具**：
+- `list_models` —— 列模型／采样器／计费说明，**走通道 A、不花积分**（想省钱先调它）
+- `estimate_cost` —— **估算积分消耗，不生成、不扣积分**。**优先问站点权威计价端点** `POST /api/v1/calculate_cost`（该调用本身免费）；桥接不可用时退回本地包络判断 + 线性外推（会标注 `source: local` 与 ±3 分误差警告）
+- `check_balance` —— 查积分／套餐／会员有效期。sdapi 兼容层**没有账户端点**，只能经浏览器会话读 `/api/v1/profile/me`；桥接不可用时返回明确提示（不是报错），生图不受影响
+- `generate_image` 的 `dry_run: true` —— 走完整参数解析与路由、然后只问价不出图（含 `image`/`reference_images` 时的额外成本提示）
+
+## 4.2 计费：常规出图**不扣积分**（🔴 2026-09-29 用站点权威接口更正）
+
+> ⚠️ **本节此前写的「V5 Full 26 积分/张、V4 Curated 17 积分/张」以及「基准单价 × 分辨率系数 × 步数系数」的公式，全部是错的**，已作废。那是把**包络外**的观测点误当成了基准价。用户 2026-09-29 指出后，用站点权威计价端点逐点扫描核实，**用户完全正确**。
+
+**免费电量包络**：纯文生图**同时满足**下面三条时，服务端返回 `cost: 0`，只吃会员共享能量（V5 Pool），**不扣积分**：
+
+| 闸门 | 免费上限 |
 |---|---|
-| `base_prompt` | 全局风格（见 1.1） |
-| `characters` | 角色框数组；每个元素至少 `prompt`，坐标可选；官方 V5 支持最多 22 个 distinct characters，当前 MCP 具体可接收数量以 schema/服务端为准 |
-| `aic: true` | 当前 MCP 的 AIC 便捷参数：强制忽略角色坐标；这是本地实现映射，不是官方 API 的统一字段保证 |
-| `center_x / center_y` | 当前 MCP 使用 0-1 坐标传入 API；锚点约肩部是社区/教程观察；任一角色非 AIC 时本地实现设置 `use_coords=true` |
-| `base_negative_prompt` | UC；显式传入时优先。当前 MCP 未传时使用简化 Light 风格文本，不要称为完整官方 Human Focus |
-| `quality_toggle` | 默认 true，会追加官方质量词；文字、特殊画风或 NSFW 可关闭，但应按同 seed 对照，不是硬性要求 |
-| `model` | 默认 `nai-diffusion-5-full`；支持 V5 Full/Curated、V5 Full Inpainting 和 V4.5 实现枚举；具体字符串以当前 MCP schema 为准 |
-| `steps / scale / sampler` | 当前 MCP 默认 V5=23/5/`k_euler_ancestral`，V4.5=28/6/`k_dpmpp_2m`；这是本地默认/经验值，不是 V5 官方固定推荐 |
-| `width / height` | 当前 schema 约束为 64 的倍数；具体最大值、免费条件和价格以官方当前账户页面为准 |
-| `image + strength` | img2img 当前默认 strength=0.6；其他 0.3-0.7 区间只是本地经验，应根据改动幅度对照 |
-| `n_samples` | 当前 MCP 截断为最多 4；批量是否免费/如何返回取决于服务端，不能假定只返回第一张 |
-| `transparent_background` | 当前实现会追加透明提示并发送透明相关字段；V5 官方确认支持 alpha transparency，PNG/RGBA 是输出格式层注意事项 |
-| `variety` | 当前实现 `true` 时发送 `skip_cfg_above_sigma=58`；这是 API/UI 实现开关，默认关闭 |
+| 像素数 | ≤ **1,048,576**（= 1024×1024，含） |
+| 步数 | ≤ **28** |
+| 张数 | = **1** |
 
-## 4.2 流程（当用户要作图时）
+**所以 832×1216（竖图）、1216×832（横图）、1024×1024（方图）这三种标准分辨率都不扣积分**——这正是用户强调的那三张。
 
-1. **确认需求**：角色（谁）、内容（什么场景/动作）、尺度（SFW/NSFW 等级）、画风（有无参考资料）
-2. **选择模型**：默认 V5 Full。参考图：vibe 模式 V5/V4.5 均可，precise 模式仅 V4.5（2026-09-14 官方核实）。**默认参数必须落在免费电量范围内（Steps ≤28、常规分辨率、单张、无 base image、无参考图）——用户未明确要求时不得突破**；大图/高步数/批量/img2img/参考图会扣 Anlas，突破前先向用户说明
-3. **组装**：
-   - V5：自然语言场景/关系 + 角色框分工 + 少量锚定标签；当前 MCP 可先用 23/5/`k_euler_ancestral`，再按同 seed 对照调参
-   - V4.5：标签与自然语言混用（质量头 + 画师串 + 角色标签 + 场景标签 + UC 预设）；CFG/steps/sampler 按官方通用建议和目标对照
-4. **调用一次（严禁并发）**，等待返回
-5. **交付**：输出文件路径 `<输出目录>/novelai_*.png`（本 MCP 默认存到 `%USERPROFILE%\Desktop\NovelAI_Output`，可用 `NOVELAI_SAVE_DIR` 覆盖）；**默认不自动识图验证**（除非用户明确要求）
-6. **限流/失败**：遵守官方“请求应由用户操作发起、不要制造过量负载”的要求；收到 429 时不要机械重试，先停止并向用户报告，除非用户明确要求稍后重试。网络超时可在确认服务状态后有限重试。
-7. **参考图压缩**：按官方/当前接口限制处理尺寸和文件大小；本地 1024px/300KB 只是经验值，不要当成通用硬阈值。
-8. **额度意识**：Opus 免费条件、V5 usage limit 和 Anlas 价格会变化；生成前调用 `check_balance`（若已配置）并按当前账户返回值说明，不能把社区换算数字当保证。
+**三个闸门互相独立**，不是「小图就免」，也不是「少步就免」：
 
-## 4.3 反读记录分析方法（用户提供"反读原码"时的最佳实践）
+| 请求 | 权威 cost | 说明 |
+|---|---|---|
+| 832×1216 · 28步 · 1张 | **0** | 包络内（本环境默认参数） |
+| 1216×832 · 28步 · 1张 | **0** | 包络内 |
+| 1024×1024 · 28步 · 1张 | **0** | 恰在 1MP 边界，仍免费 |
+| 1024×1088 · 28步 · 1张 | 33 | **略超 1MP 即收费** |
+| 1024×1088 · 10步 · 1张 | 15 | 步数降到 10 也照收——**像素闸门独立** |
+| 832×1216 · **29步** · 1张 | 30 | 多 1 步就收费 |
+| 512×768 · 28步 · 1张 | **0** | 小图免费 |
+| 512×768 · **29步** · 1张 | 12 | **小图同样怕多步**——步数闸门独立 |
+| 1024×1024 · 28步 · **2张** | 60 | 尺寸合规也须单张——张数闸门独立 |
+| 1024×1536 · 28步 · 1张 | 45 | 大图 |
 
-当用户给出朋友的**反读记录**（Description/Prompt/UC/Character Prompts）时：
-1. **逐项照抄**（base_prompt / UC / characters 全部原样），不要"聪明地"增删——朋友的经验往往在细节里
-2. **识别模型**：PNG tEXt `Source: NovelAI Diffusion V5 0ADF9AB7` = V5 Full；Comment JSON 还含 `v4_prompt`、`straight_alpha`、`seed` 等
-3. **注意反读省略坐标**：Simplified 视图不显示中心坐标/位置；三排站位可能是坐标而非 AIC（如果 AIC 复刻失败，改为显式坐标三排）
-4. **分析结构**：base 写了什么（风格/姿势/质量）、角色框粒度（纯身份 or 剧本 or 互动）、UC 层覆盖情况、权重梯度（谁主导）
-5. **复刻对比**：先用同参生成，再与参考图对照；有差距时按反读的"关键动作"补齐
+**权威计价接口**（免费、不扣积分，但只认浏览器会话，`uai_` token 401）：
+```
+POST https://api.novelai.me/api/v1/calculate_cost
+body: { action:"generate", input:"...", model:"nai-diffusion-5-full",
+        parameters:{ width, height, steps, n_samples, ... } }
+→ { "code":200, "data":{ "cost": 0 } }
+```
+**能量政策端点**：`GET /api/v1/novelai/v5-energy-policy`（同样只认浏览器会话）给出每人
+`available_images`、每日补给率（首 30 天 11%/天、之后 14%/天），并载明官方口径：
+> *"Eligible V5 requests consume reference units scaled by pixels and steps against 1MP / 23 steps / one image."*
+> *"Only exhausted user energy falls back to the normal points price."*
 
-## 4.4 本环境已修复的 MCP 特性（README 级）
+即：**包络内先扣能量，能量耗尽才回落到积分计价**。
 
-- **当前 MCP 实现**：`aic: true` 会让角色标记为 AIC；未传坐标的角色也会被本地映射为 AIC；带坐标的角色使本地 payload 使用 `use_coords=true`。这些是当前实现细节，不是通用 NovelAI API 保证。
-- **当前 schema**：角色项要求 `prompt`，坐标和专属负面词可选；V5 官方模型能力按 22 个 distinct characters 表述。
-- **透明背景**：`transparent_background: true` 会追加 `transparent background, has alpha`（如尚未存在）并发送透明相关字段；输出格式应选 PNG。
-- **Variety+**：当前 MCP 仅在 `variety: true` 时发送 `skip_cfg_above_sigma=58`。
-- **参数版本与旧参数**：当前源码按 V5/V4.5 区分 `params_version`，并不向 V5 发送旧 SMEA 字段；这属于当前实现，应随客户端升级复核。
-- **余额查询**：当前源码优先请求官方 `/user/subscription`，失败才回退镜像；返回的 V5 usage 字段是否存在取决于账户/官方接口。
-- **V5 纯文生图**：不传 `image` 时当前 MCP 走 Text to Image。
-- ⚠️ 改动 `<NovelAI_MCP>/src` 后记得构建并检查 `dist` 是否同步；本节不保证未来版本仍使用相同字段。
+**积分流水实证**（`/api/v1/membership/points/records`）：本环境两张出图记录均为
+`points: 0`、描述「图像nai-diffusion-5-full（仅当前浏览器会话）」——**根本没扣积分**。
+
+**包络外的价格**：用权威接口问（免费）。本地兜底外推 `≈ 费率 × MP × (步数/28) × 张数`
+（V5 费率 30、V4/V3 系 20）误差最大约 ±3 分，别当准数。
+
+**先算钱仍是对的纪律**，只是结论常常是 0：出图前用 `estimate_cost` / `dry_run` 问一下，包络内会明确显示 0。
+
+- ~~**降价曲线很陡**：832×1216 要 17 分，512×768 只要 7 分 → **先用小图试构图，满意再放大**~~
+  → **已作废**（那是包络外不同档位的观测值，不能比较）。正确口径：**832×1216 / 1216×832 / 1024×1024 都免费**；512×768 也免费，**它 29 步才收 12 分**。「小图更省」在本站不成立
+- **共享能量池**：包络内的请求走站点「共享能量」（站点顶部显示「V5 共享能量 x%」），**不扣积分**；能量耗尽才回落到积分计价（`fallback_note` 原文）。池空时服务端推 `event: error` +「当前所有账号暂时不可用」——属站点容量问题，稍后重试即可
+- **放大有两条路**：① **网页侧独立端点 `POST /api/v1/upscale`**（`{image, width, height, scale}`，2026-09-29 由站点 schema 确认存在，旧结论"网页端没有放大功能"已作废）——但它在 `/api/v1/*` 下，**只认浏览器会话**，`uai_` token 拿不到，目前 extension 未接入；② **通道 B 的 img2img 低重绘**（`image` + `strength` 0.2–0.35 + 更大的 `width`/`height`），实测 512×768 → 1024×1536 人物/姿势/背景完整保留、细节明显增加。⚠️ **两者都是独立的第二次生成**，且放大目标若 >1MP 就**脱离免费包络、会扣积分**（如 1024×1536 = 45 分）
+- 先验算再出图：`estimate_cost` 或 `generate_image` 的 `dry_run: true`（都免费）——包络内会明确显示 **0 积分**
+
+## 4.3 中转站 sdapi 做不到的事（全部实测）
+
+| 能力 | 结果 |
+|---|---|
+| img2img | `POST /sdapi/v1/img2img` → **404**（SillyTavern 接同一套 sdapi，所以它的图生图也会撞同样的 404） |
+| Hires. fix（`enable_hr`） | **400** `{"detail":"首版暂不支持参数: enable_hr"}`（显式拒绝，不是静默忽略） |
+| 放大 / Enhance（sdapi 侧） | `extra-single-image`、`extra-batch-images` → 404；`GET /sdapi/v1/upscalers` 返回**空数组** |
+| **放大（网页侧）** | ⚠️ **2026-09-29 更正**：站点有独立端点 `POST /api/v1/upscale`（`{image, width, height, scale}`）——「网页端没有放大功能」的旧结论已被 schema 推翻；但它在 `/api/v1/*` 下，**只认浏览器会话**，`uai_` token 拿不到 |
+| ControlNet / LoRA / scripts | 不存在 |
+| **`init_images` 塞进 `txt2img`** | ⚠️ **静默忽略**——不报错，输出与输入图无关，最容易误判成"图生图生效了" |
+
+> ⚠️ **sdapi 的字段白名单远比想象窄（2026-09-29 类型探针实测）**：`/sdapi/v1/txt2img` 的请求体在 schema 里是 `additionalProperties: true` 的**自由对象**，服务端只解析少数几个字段，其余**一律静默忽略**。
+> - **会被解析**（传非法值 → 400 报错）：`prompt`、`negative_prompt`、`width`、`height`、`steps`、`cfg_scale`、`sampler_name`、`seed`、`batch_size`、`n_iter`、`save_images`、`override_settings`、`cfg_rescale`
+> - **会被静默忽略**（传非法类型仍 200）：`qualityToggle`、`quality_toggle`、`model_mode`、`dynamic_thresholding`、`skip_cfg_above_sigma`、`noise`、`ucPreset`、`params_version`
+> - 判别手法（免费）：给候选字段传**非法类型**，400 = 被解析，200 = 被忽略。判据已用 `zzz_totally_unknown_field`（阴性）与 `width=33` / `steps="abc"`（阳性）双向对照过
+> - ⚠️ **别用"同 seed 出图是否一致"来判断字段是否生效**：站点**同 seed 不可复现**（同参数连跑 3 次得到 3 个不同哈希），该判据在本站无效
+> - ⚠️ 探测时**先用免费手段**：`/api/v1/openapi.json` 是站点自带的完整 schema（113 个 schema、全部端点），能直接读出字段真名与类型，不要靠试错去猜（试错会真的出图并扣积分）
+
+## 4.4 流程（用户要作图时）
+
+1. **确认需求**：角色／场景／动作、尺度（SFW / NSFW 等级）、画风（有无参考资料）
+2. **选模型**：默认 V5 Full。参考图：Vibe 两者皆可，**Precise Reference 仅 V4.5**
+3. **先算钱**：`list_models` 看单价（免费）；需要看余额时 `check_balance`（要浏览器会话）
+4. **组装**：V5 按 §1.7「NL 构图 + tag 元素」，V4.5 按标签混排；UC 按 §1.5 分层
+5. **调用一次，严禁并发**；两次生成之间不要连点
+6. **交付**：给出保存路径与参数；默认**不**自动放大、不自动追加出图（除用户明确要求）
+7. **失败处理**：遇限流/429 **不要循环重试**，拉长间隔再试；失败时先报告并记录参数（模型/尺寸/步数/seed/sampler）
+
+## 4.5 硬约束（都是踩出来的）
+
+- **bsk 一个 session 同时只允许一条命令**，并发返回 `session already has an unfinished command`（exit 4）；桥接层用 promise 链串行化并对该错误重试 4 次
+- **图片 base64 动辄 500KB+，不能当 `bsk evaluate` 参数**（`ENAMETOOLONG`）→ 用 `127.0.0.1` 上的临时 HTTP 服务让页面自己取图
+- **网页 API 的 `image` 字段必须裸 base64**，带 `data:image/png;base64,` 前缀会报 `40001 Invalid image format`
+- **SSE 只有 `final` 事件是成品图**；`progress` / `final_preview` 是低质量预览，不能当输出
+- **`final` 可能是 WebP**（预览是 JPEG）→ 按魔数嗅探 MIME，别写死 PNG
+- **网页通道不返回 seed** → 存图文件名改用时间戳，否则同提示词重复生成会互相覆盖（通道 A 有 seed）
+- **限流纪律**：旧通道曾实测 `429 Concurrent generation is locked`——间隔 85s／95s 仍被拒、**等 180s 才通过**（疑似同账户其它客户端在生成时锁更久）；积分站的限流阈值尚未单独实测，遇到限流按同样纪律处理：**不连点、拉长到 2–3 分钟**
+- 网页通道要求 bsk daemon 在**独立终端**运行（在 agent 会话里起会被 Windows 拒绝：`cannot start an independent Windows daemon ... os error 5`）
+
+## 4.6 反读记录分析方法（用户提供「反读原码」时）
+
+1. **逐项照抄**（`prompt` / UC / 角色框全部原样），不要「聪明地」增删——朋友的经验往往藏在细节里
+2. **注意反读省略坐标**：Simplified 视图不显示 `center_x/center_y`；三排站位可能本来就是坐标而非 AI's Choice（若 AIC 复刻失败，改为显式坐标）
+3. **拆解它写了什么**：风格／姿势／质量词的取舍、角色框粒度（纯身份 or 剧本 or 互动）、UC 层覆盖情况、权重梯度（谁在主导画风）
+4. **复刻对比**：先用同参生成，再与参考图比对，按「关键动作」补齐差距
+
+### 🆕 本地批量反读技术（2026-10-09 韩网 935 张实战验证，无需上传网站）
+
+> NovelAI V5 原图把**完整参数 JSON** 写进文件元数据。spell.novelai.dev 之类网站在做的也是解析这些字段——
+> **本地解析等价且更快**（935 张 < 3 秒），且对已剥离元数据的文件同样无能为力（不需浪费时间上传）。
+
+**两种容器与承载位置**：
+
+| 容器 | 承载位置 | 备注 |
+|---|---|---|
+| **PNG** | `tEXt` 块：`Title` / `Description`(正面词) / `Comment`(参数 JSON) / `Software` / `Source` | 早期导出格式 |
+| **WebP** | RIFF **`EXIF` chunk** | V5 主流格式（本样本占 83%） |
+
+**WebP EXIF 的三个必踩坑**（`PIL.Image.open(p).info` **读不到**，`getexif()` 也会漏）：
+
+1. **必须剥离 `Exif\0\0` 前缀** —— RIFF EXIF chunk 内容是 `45 78 69 66 00 00` + TIFF 头，不是裸 TIFF
+2. **大小端都有** —— TIFF 头可能是 `II`（小端）**也可能是 `MM`（大端）**，样本中两种混杂
+3. **`UserComment`(0x9286) 位置不固定** —— 可能挂在**根 IFD**（多数），也可能在 **Exif SubIFD**（`0x8769` 指向）里
+
+**稳健做法**：把根 IFD、`ExifOffset` 指向的 SubIFD、以及 `next IFD` 链**全部遍历**；图像数据（`VP8 `/`VP8L` chunk）用 `f.seek()` 跳过，只读 `EXIF` chunk。
+
+**字段映射**：
+```
+EXIF 0x010D DocumentName     = "NovelAI generated image"
+EXIF 0x010E ImageDescription = 正面 prompt（少数文件此处是 JSON 包装）
+EXIF 0x0131 Software         = "NovelAI Diffusion V5 0ADF9AB7"
+EXIF 0x9286 UserComment      = {"Comment": "<完整参数 JSON 字符串>"}
+                                └─ 含 prompt / uc / steps / scale / seed / sampler /
+                                   noise_schedule / width / height / cfg_rescale /
+                                   v4_prompt.caption.char_captions（角色框正文 + centers 坐标）
+```
+
+**判断文件是否还有料**：`IEND`（PNG）/ RIFF 声明长度（WebP）之后若还有字节才算有尾部残留；再对整文件做 ASCII run 扫描找 `artist:` / `1girl` / `"prompt"` 等关键词。**无残留 = 上传重编码导致，不要再尝试别的工具**。
+
+**已完成的大规模反读语料**：见 `kr-n5-corpus-analysis.md`（韩网 935 张，391 张成功反读）——内含完整结构规则、画师串、负强调配置表、UC 模板、参数分布，可直接作为 V5 提示词写作的实战依据。
 
 ---
 
@@ -541,8 +1022,12 @@ ningen_mame, onineko, artist:akizero1510, artist:wanke, [[artist:akakura]], 1.15
 | `danbooru-cn-reference.xlsx` | 5481 条 Danbooru 中英对照 | 按需查阅 |
 | `OC_Chars.xlsx` | 5 个 OC 角色完整数据（作者私有，未随仓库分发） | 锚点标签、服设、画风、参数、触发词 |
 | `v5-confirmed-artist-strings.md` | **V5 已确认画师串登记册**（用户逐条验收） | 用户说「用我确认过的串/社区A」时直接取用；新串验收后追加入册 |
+| `v5-field-corrections.md` | **V5 实测校正**（与旧口径冲突处以本文为准） | 姿势/机位 tag 化、版权角色框写法、数字结尾画师名坑 |
 | `manga-page-playbook.md` | **V5 整页漫画规范**（版式声明/逐格方位锚/台词载体） | 直出 fully paneled comic 时按此写 |
-| `v5-field-corrections.md` | **V5 实测校正**（与旧口径冲突处以本文为准） | 姿势机位必须用 tag、版权角色栏写法、权重解析坑 |
+| `🆕 kr-n5-corpus-analysis.md` | **韩网 N5 大样本语料分析报告**（935 张 · 391 张完整反读） | V5 提示词结构的实战依据：`draw body like artist:X` 手法、负强调配置表、UC 长模板、参数联动、多语言混用、本地反读技术 |
+| `🆕 kr-high-reuse-recipes.md` | **韩网 N5 高复用画师串清单**（8 个风格族 · 覆盖 367/391 张） | 从语料聚类出的逐字配方 + 各族参数（steps/CFG/rescale 配对），可直接复用的画师串基底 |
+| `🆕 root-curated-recipes.md` | **根目录精品逐字配方**（13 张 · 用户精选级） | 语料中质量最高的样本，配方逐字冻结 + 题材索引 |
+| `🆕 q-version-sticker-note.md` | **Q版贴纸风反读记录**（单张 O 级样本） | 独有参数组合（CFG 7 + cfg_rescale 0.36 + 832×832）、Q版专属 UC 清单、`tall/long body/long neck` 比例压制法 |
 
 ---
 
@@ -567,7 +1052,7 @@ ningen_mame, onineko, artist:akizero1510, artist:wanke, [[artist:akakura]], 1.15
    11. **NSFW 实用配方**：`rating:explicit` + 关 Add Quality Tags（防自动加 rating:general）；刻度线类立意用 `yellow lines painted on belly with tick marks, measure marks on stomach` 可稳定渲染
 
 - **2026-08-25（第七轮 NAI5 全面审计，本轮）**：
-  - **信息源升级**：官方 OpenAPI（image.novelai.net/docs/doc.json）确认 V5 参数面；三套抓包逆向实现交叉验证（Auto-NovelAI-Refactor / NAIWeaver / kirafishy NaiPromptManager）；GENYTOOLS 能力矩阵；シトラス note 教程 7 组作例全文；PTT/LINUX DO 内测讨论。审计报告：`NAI5_调研与skill审计报告.md`（本地审计文档，未随仓库分发）
+  - **信息源升级**：官方 OpenAPI（image.novelai.net/docs/doc.json）确认 V5 参数面；三套抓包逆向实现交叉验证（Auto-NovelAI-Refactor / NAIWeaver / kirafishy NaiPromptManager）；GENYTOOLS 能力矩阵；シトラス note 教程 7 组作例全文；PTT/LINUX DO 内测讨论。审计报告：`<工作目录>\NAI5_调研与skill审计报告.md`
   - **修正错误**：①将 CFG 7 降为 5-6 的起点建议；②当前 MCP 枚举不含 `nai-diffusion-5-curated-inpainting`，具体重绘路由仍按当前 UI/API 验证；③把 V5 Inpaint、Vibe、Precise 的限制从永久断言改为版本化能力检查
   - **过时更新**：①V5 官方口径为最多 22 个 distinct characters；32 框、肩部锚点和连续坐标只保留为实现/社区观察；②官方 Quality Tags 文本按当前页面校准（Standard=`very aesthetic, masterpiece, no text`）；③负强调的官方示例与本地崩坏现象分开记录；④1471/703 effective prompt tokens 与 Full 750/Curated 374 字符现已有官方页面依据；⑤固定放大倍率、V5 参考图限制和额度换算不作永久结论
   - **新增章节**：1.10 整页漫画直出工作流（comic style 配方/一角色多框分镜法/框内对白）、1.11 Prompt Randomizer（`||a|b|c||` 随机权重/空选项技巧）与 Prompt Chunks、Decrisper
@@ -614,7 +1099,60 @@ ningen_mame, onineko, artist:akizero1510, artist:wanke, [[artist:akakura]], 1.15
   ### ③ 环境与限流补充
 
   - **429「Concurrent generation is locked」比想象中顽固**：间隔 85s / 95s 仍被拒，**等 180s 才通过**；疑似同账户其他客户端（网页端/桌面端）在生成时锁更久。遇到 429 不要连点，直接拉长到 2-3 分钟
-  - Windows 环境下的 pwsh 常为 **Windows PowerShell 5.1**（不跟随 308、IWR 非交互模式报错、无 System.Net.Http）；对外请求统一用 `curl.exe -K <配置文件>`，令牌放配置文件里、`-x http://127.0.0.1:7890`
+  - 本机 pwsh 实为 **Windows PowerShell 5.1**（不跟随 308、IWR 非交互模式报错、无 System.Net.Http）；对外请求统一用 `curl.exe -K <配置文件>`，令牌放配置文件里、`-x http://127.0.0.1:7890`
   - 抓 403 反爬站（贴吧/NGA/pixiv）可用 **无头 Edge + 用户真实配置**：`msedge.exe --headless=new --user-data-dir="<真实 Edge 配置>" --virtual-time-budget=9000 --dump-dom "<URL>"`
 
 **V5 知识来源声明**：官方来源以当前页面为准：[Models](https://docs.novelai.net/en/image/models)、[Text Rendering](https://docs.novelai.net/en/image/textrendering)、[Multi-Character Prompting](https://docs.novelai.net/en/image/multiplecharacters)、[Steps & Prompt Guidance](https://docs.novelai.net/en/image/stepsguidance)、[Quality Tags](https://docs.novelai.net/en/image/qualitytags)、[Undesired Content](https://docs.novelai.net/en/image/undesiredcontent)、[Subscription](https://docs.novelai.net/en/subscription) 与 [Image API Swagger](https://image.novelai.net/docs/doc.json)。社区补充包括 [シトラス V5 教程](https://note.com/aiillust000/n/n239e76e3d07d)、[V5 发布后体验](https://note.com/itsuki_ailab/n/n8a7cf90612f6)、[多画师/客户端实现](https://github.com/XTOGENY/ComfyUI-NovelAI-GENYTOOLS)。社区经验必须记录模型、prompt、UC、seed、steps、CFG、尺寸、sampler 和客户端版本；缺少这些信息时只能作为启发，不能当成可复现定律。
+
+- **2026-09-29（第十轮 🔴 积分计费口径更正，用户指出后核实）**：
+
+  ### ① 常规出图不扣积分（推翻本 skill 此前全部积分口径）
+
+  - **用户指正**：纯文生图生成 V5 的 832×1216、1216×832、1024×1024 这三张图**仅消耗电量、不需积分**。助手此前报「32 积分」是错的
+  - **核实方法**（全部免费、不出图）：用站点权威计价端点 `POST /api/v1/calculate_cost` 逐点扫描 + 交叉验证 `/api/v1/novelai/v5-energy-policy` + 读积分流水 `/api/v1/membership/points/records`
+  - **流水铁证**：本环境两张出图记录均为 `points: 0`，描述「图像nai-diffusion-5-full（仅当前浏览器会话）」——**根本没扣积分**
+  - **结论**：**像素 ≤1,048,576（1024×1024）且 步数 ≤28 且 张数 =1** → `cost: 0`，只吃共享能量。**832×1216 / 1216×832 / 1024×1024 三种标准图全部免费**
+  - **三闸门互相独立**（易错点）：512×768 在 29 步收 12 分（小图不等于免费）；1024×1024 出 2 张收 60 分（尺寸合规不等于免费）；1024×1088 即便 10 步也收 15 分（少步不等于免费）
+  - **能量政策原文**：`Eligible V5 requests consume reference units scaled by pixels and steps against 1MP / 23 steps / one image.`、`Only exhausted user energy falls back to the normal points price.`
+
+  ### ② 代码与文档更正
+
+  - **`<NovelAI_MCP>` 重写计价**：删除错误的 `OBSERVED_COSTS`（26/17）；新增 `FREE_ENVELOPE` / `isFreeEligible()` / `buildCostRequestBody()` / `queryAuthoritativeCost()`；`estimateCost` 改为**异步并优先问权威端点**，桥接不可用才本地外推
+  - **本 SKILL.md §4.2 整节重写**，并更正 §4.1 参数表（`steps`/`count` 标注包络）、§4.4 流程、工具说明
+  - **验证**：10/10 组尺寸/步数/张数与权威值精确一致
+
+  ### ③ 环境补充（同日实测）
+
+  - **bsk 通道 B 需要三件事**：daemon + **显式 `bsk session start`** + 页面登录 novelai.me。只起 daemon 不建 session 时报「没有活跃的 bsk 浏览器会话」，这是此前 check_balance 反复失败的真因
+  - **更正旧记载**：「bsk daemon 在 agent job 里起会被 Windows 拒绝（os error 5）」**已不适用**——bsk 0.3.1 实测可在后台 job 内启动成功（`in_job=Ok(true)`）
+  - **`--browser` 必须用十六进制 INSTANCE id**（`bsk browsers` 查），用浏览器名 `edge` 会报 `not_found`
+  - **已知缺陷**：`bridge.ts` 的 `cachedSession` 只写不失效，bsk 会话被回收后（空闲数分钟即发生）通道 B 永久不可用，**重建会话也无效**，须重启 MCP 进程
+
+- **2026-10-09（第十一轮 · 韩网 935 张大样本语料反读，本轮）**：
+
+  ### ① 素材与方法
+
+  - **样本**：`（1984）韩网N5作品筛选整理9`，935 张（PNG 156 / WebP 779），V5 原图，以 NSFW 为主
+  - **成果**：**391 张成功反读出完整参数**（余 544 张元数据被上传流程剥离，经尾部字节 + ASCII run 穷尽扫描确认无残留）
+  - **方法**：纯本地二进制解析，**未依赖 spell.novelai.dev**——该网站做的也是解析嵌入元数据，本地等价且更快（935 张 < 3 秒）
+  - **报告**：`kr-n5-corpus-analysis.md`；原始语料 `kr_corpus.jsonl`（`<工作目录>\`）
+
+  ### ② 本轮修正的认知
+
+  | 项 | 原认知 | 本轮证据 |
+  |---|---|---|
+  | **大倍数负强调** | 「`-5::` 会崩坏」（2026-08-25 镜像路径实测） | 🔴 **反证**：391 张中 92.8% 用负强调，`-5`(63张) / `-6`(24张) 大量稳定出图 → **崩坏应归因旧镜像通道，非 V5 限制** |
+  | **UC 长度** | 五层模板，未给长度预期 | 中位 **1112 字符 ≈ 正面的 2 倍**，上限放宽到 800–1200 |
+  | **画师数与 CFG** | 「多画师 3.5-4」 | 实测：0 画师 CFG 6.0 / 1-2 画师 **4.0** / 5+ 画师 **5.0**；画师越多 CFG 越要降，但 **1-2 位时最低** |
+  | **cfg_rescale** | 未量化 | 316/391 为 0；启用者（75 张）集中 CFG ≥6 或画师 ≤2 → 印证是高 CFG 补偿手段 |
+  | **多语言** | 已知中/日可用 | 🆕 **韩文 36.1% 实测有效**（141/391），0% 日文/中文 → 不是日语专属，是通用多语言能力 |
+  | **参数推荐** | 本机实测 | ✅ **独立样本交叉验证**：steps 23 / CFG 5.0 / k_euler_ancestral / karras(100%) / 832×1216 全部吻合 |
+
+  ### ③ 本轮新增能力（已写入正文）
+
+  - **§1.2**：`draw body like artist:X` 人体定向借用语法（44.5% 使用率）+ 四层画师串标准范式 + 权重实测区间 0.05–2.0 + 画师数×参数联动表
+  - **§1.5**：UC 长度策略修正 + 37 项核心 UC token + 标准 UC 头 + 画师黑名单（`xinzoruo`/`milkpanda`）+ `0::tag::` 零权重占位法等进阶写法
+  - **§1.6**：cfg_rescale 建议 + 韩网 391 样本参数交叉验证表 + **步数定位纠正**（892 张双合集实证：天花板是 28 不是 23；23–25 为产出甜点区；步数是画风族常量并与 CFG 联动；低步数是刻意风格选择）
+  - **§1.8**：负强调配置表（按症状取用）+ 多语言混用规则 + NSFW 复合镜头词串
+  - **§4.6**：🆕 **本地批量反读技术**（WebP EXIF 三坑、字段映射、残留判定）
+  - **`v5-confirmed-artist-strings.md`**：新增「🇰🇷 韩网社区串」3 条（173/13/60 张复用，逐字冻结，标注为外部语料未本机验收）

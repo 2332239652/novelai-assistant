@@ -23,6 +23,7 @@
 - 🎭 **评分与 NSFW 标签** - rating:general / sensitive / questionable / explicit 完整体系
 - 🧩 **Danbooru 标签数据库** - 内置 Top Tags、Tag Aliases、中英对照、全角色表四个查询表
 - 📋 **场景化模板库** - 通用场景模板、NSFW 模板、职业/服装/民族服饰模板、419+ 画师混合串
+- 🔬 **大样本语料反读** - 935 张韩网 V5 作品集二进制解析（391 张完整参数），提炼负强调配置、UC 长模板、参数联动等实战规律
 - 🚦 **API 并发保护** - 内置 429 封禁风险警告，指导 AI 逐张排队生成
 
 ## 🚀 安装
@@ -43,6 +44,10 @@ git clone https://github.com/2332239652/novelai-assistant.git
 | `manga-page-playbook.md` | V5 整页漫画规范：版式声明句 / 逐格方位锚 / 台词载体 / 无台词格标注 |
 | `v5-field-corrections.md` | V5 实测校正（与旧口径冲突时以此为准）：姿势机位必须用 tag、角色栏写法、权重解析坑 |
 | `v5-confirmed-artist-strings.md` | V5 已确认画师串登记册：逐字冻结的可复现配方 |
+| `kr-n5-corpus-analysis.md` | 韩网 N5 大样本语料分析报告：935 张反读，WebP EXIF 解析技术、提示词结构统计、负强调配置、参数联动 |
+| `kr-high-reuse-recipes.md` | 韩网 N5 高复用画师串清单：8 个风格族（覆盖 367/391 张）的逐字配方与各族参数配对 |
+| `root-curated-recipes.md` | 根目录精品逐字配方：13 张精选样本的完整配方 + 题材索引 |
+| `q-version-sticker-note.md` | Q版贴纸风反读记录：CFG 7 + cfg_rescale 0.36 + 832×832 参数组合与 Q版专属 UC 清单 |
 | `tag-reference.md` | 中文 → 英文标签速查表（772 行） |
 | `game-character-tags.md` | 二游角色标签参考（碧蓝航线 / 蔚蓝档案等） |
 | `danbooru-characters-full.txt` | D站全角色表（1106 行）：冷门角色与皮肤变体（碧蓝航线_(皮肤名) 格式） |
